@@ -1,59 +1,61 @@
-<?php declare(strict_types = 1);
-require('csv.php');
-class Accountant{
-    private $data;
-
-    public function __construct(array $data){
-        $this->data = $data;
-    }
+<?php declare(strict_types=1);
 
 
-    public function sum_expense() : int{
-        $sum = 0;
-        foreach($this->data as $info){
-            $num = (int)str_replace('$','',$info[3]);
-            if ($num < 0 ){
-                 
-                $sum += $num;
-            }
-            $num = 0;
+
+function getTransactionFiles(string $dirpath): array
+{
+    $files = [];
+    foreach (scandir($dirpath) as $file) {
+        if (!is_dir($file)) {
+            $files[] = $dirpath . $file;
         }
-    
-        return $sum;
     }
-    
-    public function sum_income() : int{
-        $sum = 0;
-        foreach($this->data as $info){
-            $num = (int)str_replace('$','',$info[3]);
-            if ($num > 0 ){
-                 
-                $sum += $num;
-                //echo $info[3] . "\n";
-            }
-            $num = 0;
-        }
-        //$sum = prety_dolar_sign($sum);
-        return $sum;
-    }
-
-
-    function total_sum():int{
-        return $this->sum_income() + $this->sum_expense();
-    }
-    
-    function prety_dolar_sign(int $int) : string{
-     
-        
-        $str = (string)$int;
-        if($int < 0 )
-        $str = substr_replace($str, '$', 1, 0);
-        else $str = '$'.$str;
-    
-    
-        return $str;
-    }
-
-
+    return $files;
 }
 
+function getTransactions(string $transaction_file): array
+{
+    
+        $file = fopen($transaction_file, 'r');
+        $transactions = [];
+        fgetcsv($file);
+
+        while (($line = fgetcsv($file)) !== false) {
+
+            $transactions[] = parseTransaction($line);
+        }
+    return $transactions;
+}
+
+function parseTransaction(array $transaction_row){
+
+    [$date,$check,$desription,$amount] = $transaction_row;
+
+    $amount = str_replace(['$',','],'',$amount);
+
+    return[
+        'date' => $date,
+        'check' => $check,
+        'description' => $desription,
+        'amount' => $amount
+    ];
+}
+
+function calculateTotals(array $transactions) : array{
+
+    $totals = ['netTotal' => 0, 'totalexpense' => 0 , 'totalincome' => 0];
+
+    foreach($transactions as $transaction){
+
+        $totals['netTotal'] += $transaction['amount']; 
+
+        if($transaction['amount'] <= 0 ){
+            $totals['totalexpense'] += $transaction['amount'];
+        }else{
+            $totals['totalincome'] += $transaction['amount'];
+        }
+
+    }
+
+    return $totals;
+}
